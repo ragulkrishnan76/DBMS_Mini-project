@@ -1,0 +1,109 @@
+import sqlite3
+
+class PersonalFinanceManager:
+    def __init__(self):
+        self.conn = sqlite3.connect('finance.db')
+        self.cursor = self.conn.cursor()
+        self.create_table()
+
+    def create_table(self):
+        """Create expenses table if not exists."""
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS expenses
+                               (id INTEGER PRIMARY KEY,
+                                amount REAL,
+                                category TEXT)''')
+        self.conn.commit()
+
+    def add_expense(self, amount, category):
+        """Add an expense."""
+        if isinstance(amount, (int, float)) and amount > 0:
+            self.cursor.execute("INSERT INTO expenses (amount, category) VALUES (?, ?)", (amount, category))
+            self.conn.commit()
+            print("Expense added.")
+        else:
+            print("Invalid expense amount.")
+
+    def add_income(self, amount):
+        """Add income."""
+        if isinstance(amount, (int, float)) and amount > 0:
+            self.cursor.execute("UPDATE income SET amount = amount + ?", (amount,))
+            self.conn.commit()
+            print("Income added.")
+        else:
+            print("Invalid income amount.")
+
+    def total_expenses(self):
+        """Calculate total expenses."""
+        self.cursor.execute("SELECT SUM(amount) FROM expenses")
+        total = self.cursor.fetchone()[0]
+        return total if total else 0
+
+    def expenses_by_category(self):
+        """Calculate expenses by category."""
+        self.cursor.execute("SELECT category, SUM(amount) FROM expenses GROUP BY category")
+        expenses_by_category = self.cursor.fetchall()
+        return dict(expenses_by_category)
+
+    def spending_insights(self):
+        """Provide insights into spending."""
+        total_expenses = self.total_expenses()
+        expenses_by_category = self.expenses_by_category()
+
+        print("\n--- Spending Insights ---")
+        print("Total Income:", self.get_income())
+        print("Total Expenses:", total_expenses)
+        print("\nSpending by Category:")
+        for category, amount in expenses_by_category.items():
+            print(f"{category}: {amount}")
+        
+        remaining_balance = self.get_income() - total_expenses
+        print("\nRemaining Balance:", remaining_balance)
+
+    def get_income(self):
+        """Get total income."""
+        self.cursor.execute("SELECT COALESCE(SUM(amount), 0) FROM income")
+        total_income = self.cursor.fetchone()[0]
+        return total_income if total_income else 0
+
+    def __del__(self):
+        """Close the database connection."""
+        self.conn.close()
+
+
+def main():
+    finance_manager = PersonalFinanceManager()
+
+    while True:
+        print("\nPersonal Finance Manager")
+        print("1. Add Expense")
+        print("2. Add Income")
+        print("3. View Spending Insights")
+        print("4. Exit")
+
+        choice = input("Enter your choice: ")
+
+        if choice == "1":
+            try:
+                amount = float(input("Enter expense amount: "))
+                category = input("Enter expense category: ")
+                finance_manager.add_expense(amount, category)
+            except ValueError:
+                print("Invalid input. Please enter a valid amount.")
+        elif choice == "2":
+            try:
+                amount = float(input("Enter income amount: "))
+                finance_manager.add_income(amount)
+            except ValueError:
+                print("Invalid input. Please enter a valid amount.")
+        elif choice == "3":
+            finance_manager.spending_insights()
+        elif choice == "4":
+            print("Exiting...")
+            break
+        else:
+            print("Invalid choice. Please enter a number from 1 to 4.")
+
+if __name__ == "__main__":
+    main()
+
+
